@@ -1,0 +1,133 @@
+# papermerge-storage.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: papermerge-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+
+---
+# papermerge-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: papermerge-secret
+type: Opaque
+data:
+  PAPERMERGE__AUTH__USERNAME: YWRtaW4=
+  PAPERMERGE__AUTH__PASSWORD: c2VjcmV0
+  PAPERMERGE__DATABASE__URL: cG9zdGdyZXNxbDovL3BhcGVybWVyZ2U6cG1nLXNlY3JldEBwYXBlcm1lcmdlZGF0YWJhc2U6NTQzMi9wYXBlcm1lcmdl
+  PAPERMERGE__SECURITY__SECRET_KEY: OGFhOTEyN2U5MDQzMjRlMWQ5M2MyYjY4NDgzYTMyN2MzYjViZTk2NGRkMTYxZTNlNGRmOGRiY2EwNDQzZWMyMQ==
+
+---
+# papermerge-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: papermerge-config
+data:
+  PAPERMERGE__MAIN__MEDIA_ROOT: "/var/media/pmg"
+  PAPERMERGE__OCR__LANG_CODES: "eng,fra"
+  PAPERMERGE__OCR__DEFAULT_LANG_CODE: "eng"
+  PAPERMERGE__REDIS__URL: "redis://papermerge-redis:6379/0"
+
+---
+# papermerge-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: papermerge
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: papermerge
+  template:
+    metadata:
+      labels:
+        app: papermerge
+    spec:
+      containers:
+        - name: papermerge
+          image: papermerge/papermerge:3.3.1
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: media-storage
+              mountPath: /var/media/pmg
+          env:
+            - name: PAPERMERGE__AUTH__USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: papermerge-secret
+                  key: PAPERMERGE__AUTH__USERNAME
+            - name: PAPERMERGE__AUTH__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: papermerge-secret
+                  key: PAPERMERGE__AUTH__PASSWORD
+            - name: PAPERMERGE__DATABASE__URL
+              valueFrom:
+                secretKeyRef:
+                  name: papermerge-secret
+                  key: PAPERMERGE__DATABASE__URL
+            - name: PAPERMERGE__SECURITY__SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: papermerge-secret
+                  key: PAPERMERGE__SECURITY__SECRET_KEY
+            - name: PAPERMERGE__MAIN__MEDIA_ROOT
+              valueFrom:
+                configMapKeyRef:
+                  name: papermerge-config
+                  key: PAPERMERGE__MAIN__MEDIA_ROOT
+            - name: PAPERMERGE__OCR__LANG_CODES
+              valueFrom:
+                configMapKeyRef:
+                  name: papermerge-config
+                  key: PAPERMERGE__OCR__LANG_CODES
+            - name: PAPERMERGE__OCR__DEFAULT_LANG_CODE
+              valueFrom:
+                configMapKeyRef:
+                  name: papermerge-config
+                  key: PAPERMERGE__OCR__DEFAULT_LANG_CODE
+            - name: PAPERMERGE__REDIS__URL
+              valueFrom:
+                configMapKeyRef:
+                  name: papermerge-config
+                  key: PAPERMERGE__REDIS__URL
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: media-storage
+          persistentVolumeClaim:
+            claimName: papermerge-pvc
+
+---
+# papermerge-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: papermerge
+spec:
+  type: LoadBalancer
+  selector:
+    app: papermerge
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80

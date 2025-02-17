@@ -1,0 +1,110 @@
+# s3worker-storage.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: s3worker-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+# s3worker-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: s3worker-secret
+type: Opaque
+data:
+  AWS_ACCESS_KEY_ID: MmU4ODE3MjY2MjYxNjEwODEwNTk2YTUwYjhmNGE4YzU=
+  AWS_SECRET_ACCESS_KEY: YTUwMzA3MWRlYmZhM2FjMGMxZGUxY2Q3OWY=
+  PAPERMERGE__DATABASE__URL: cG9zdGdyZXNxbDovL3BhcGVybWVyZ2U6cG1nLXNlY3JldEBwYXBlcm1lcmdlZGF0YWJhc2U6NTQzMi9wYXBlcm1lcmdl
+
+---
+# s3worker-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: s3worker-config
+data:
+  AWS_REGION_NAME: "us-east-1"
+  AWS_S3_ENDPOINT: "http://paperless-minio:9000"
+  PAPERMERGE__MAIN__MEDIA_ROOT: "/var/media/pmg"
+  PAPERMERGE__REDIS__URL: "redis://papermerge-redis:6379/0"
+  PAPERMERGE__S3__BUCKET_NAME: "papermerge"
+  S3_WORKER_ARGS: "-Q s3,s3preview -c 2"
+
+---
+# s3worker-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: papermerge-s3worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: papermerge-s3worker
+  template:
+    metadata:
+      labels:
+        app: papermerge-s3worker
+    spec:
+      containers:
+        - name: s3worker
+          image: papermerge/s3worker:0.4.3
+          volumeMounts:
+            - name: media-storage
+              mountPath: /var/media/pmg
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: s3worker-secret
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: s3worker-secret
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: PAPERMERGE__DATABASE__URL
+              valueFrom:
+                secretKeyRef:
+                  name: s3worker-secret
+                  key: PAPERMERGE__DATABASE__URL
+            - name: AWS_REGION_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: s3worker-config
+                  key: AWS_REGION_NAME
+            - name: AWS_S3_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: s3worker-config
+                  key: AWS_S3_ENDPOINT
+            - name: PAPERMERGE__MAIN__MEDIA_ROOT
+              valueFrom:
+                configMapKeyRef:
+                  name: s3worker-config
+                  key: PAPERMERGE__MAIN__MEDIA_ROOT
+            - name: PAPERMERGE__REDIS__URL
+              valueFrom:
+                configMapKeyRef:
+                  name: s3worker-config
+                  key: PAPERMERGE__REDIS__URL
+            - name: PAPERMERGE__S3__BUCKET_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: s3worker-config
+                  key: PAPERMERGE__S3__BUCKET_NAME
+            - name: S3_WORKER_ARGS
+              valueFrom:
+                configMapKeyRef:
+                  name: s3worker-config
+                  key: S3_WORKER_ARGS
+      volumes:
+        - name: media-storage
+          persistentVolumeClaim:
+            claimName: s3worker-pvc

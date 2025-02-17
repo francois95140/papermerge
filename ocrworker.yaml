@@ -1,0 +1,84 @@
+# ocrworker-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ocrworker-secret
+type: Opaque
+data:
+  AWS_ACCESS_KEY_ID: MmU4ODE3MjY2MjYxNjEwODEwNTk2YTUwYjhmNGE4YzU=
+  AWS_SECRET_ACCESS_KEY: YTUwMzA3MWRlYmZhM2FjMGMxZGUxY2Q3OWY=
+  PAPERMERGE__DATABASE__URL: cG9zdGdyZXNxbDovL3BhcGVybWVyZ2U6cG1nLXNlY3JldEBwYXBlcm1lcmdlZGF0YWJhc2U6NTQzMi9wYXBlcm1lcmdl
+
+---
+# ocrworker-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ocrworker-config
+data:
+  AWS_REGION_NAME: "us-east-1"
+  AWS_S3_ENDPOINT: "http://paperless-minio:9000"
+  PAPERMERGE__REDIS__URL: "redis://papermerge-redis:6379/0"
+  PAPERMERGE__S3__BUCKET_NAME: "papermerge"
+  OCR_WORKER_ARGS: "-Q ocr -c 2"
+
+---
+# ocrworker-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: papermerge-ocrworker
+spec:
+  replicas: 3  # Scaling horizontal
+  selector:
+    matchLabels:
+      app: papermerge-ocrworker
+  template:
+    metadata:
+      labels:
+        app: papermerge-ocrworker
+    spec:
+      containers:
+        - name: ocrworker
+          image: papermerge/ocrworker:0.3.1
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: ocrworker-secret
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ocrworker-secret
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: PAPERMERGE__DATABASE__URL
+              valueFrom:
+                secretKeyRef:
+                  name: ocrworker-secret
+                  key: PAPERMERGE__DATABASE__URL
+            - name: AWS_REGION_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ocrworker-config
+                  key: AWS_REGION_NAME
+            - name: AWS_S3_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: ocrworker-config
+                  key: AWS_S3_ENDPOINT
+            - name: PAPERMERGE__REDIS__URL
+              valueFrom:
+                configMapKeyRef:
+                  name: ocrworker-config
+                  key: PAPERMERGE__REDIS__URL
+            - name: PAPERMERGE__S3__BUCKET_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: ocrworker-config
+                  key: PAPERMERGE__S3__BUCKET_NAME
+            - name: OCR_WORKER_ARGS
+              valueFrom:
+                configMapKeyRef:
+                  name: ocrworker-config
+                  key: OCR_WORKER_ARGS
