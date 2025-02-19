@@ -6,7 +6,7 @@ metadata:
   labels:
     app: redis
 spec:
-  replicas: 3  # Scaling horizontal avec 3 replicas
+  replicas: 1
   selector:
     matchLabels:
       app: redis

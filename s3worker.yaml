@@ -30,7 +30,7 @@ metadata:
   name: s3worker-config
 data:
   AWS_REGION_NAME: "us-east-1"
-  AWS_S3_ENDPOINT: "http://paperless-minio:9000"
+  AWS_S3_ENDPOINT: "http://minio:9000"
   PAPERMERGE__MAIN__MEDIA_ROOT: "/var/media/pmg"
   PAPERMERGE__REDIS__URL: "redis://papermerge-redis:6379/0"
   PAPERMERGE__S3__BUCKET_NAME: "papermerge"

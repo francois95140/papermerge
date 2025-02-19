@@ -42,7 +42,7 @@ kind: Deployment
 metadata:
   name: papermerge
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: papermerge
@@ -100,18 +100,6 @@ spec:
                 configMapKeyRef:
                   name: papermerge-config
                   key: PAPERMERGE__REDIS__URL
-          livenessProbe:
-            httpGet:
-              path: /
-              port: 80
-            initialDelaySeconds: 30
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /
-              port: 80
-            initialDelaySeconds: 30
-            periodSeconds: 10
       volumes:
         - name: media-storage
           persistentVolumeClaim:

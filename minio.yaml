@@ -63,18 +63,6 @@ spec:
           volumeMounts:
             - name: storage
               mountPath: /data
-          livenessProbe:
-            httpGet:
-              path: /minio/health/live
-              port: api
-            initialDelaySeconds: 30
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /minio/health/ready
-              port: api
-            initialDelaySeconds: 30
-            periodSeconds: 10
       volumes:
         - name: storage
           persistentVolumeClaim:
@@ -85,7 +73,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: minio-api
+  name: paperless-minio
 spec:
   type: LoadBalancer
   selector:
@@ -95,17 +83,6 @@ spec:
       port: 9000
       targetPort: 9000
       name: api
-
----
-# minio-service-console.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: minio-console
-spec:
-  selector:
-    app: minio
-  ports:
     - protocol: TCP
       port: 9001
       targetPort: 9001
